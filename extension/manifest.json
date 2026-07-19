@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "云创考勤洞察",
+  "description": "在日历上查看云创打卡时间、月平均工时、欠工时和异常日期。",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "云创考勤洞察",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://yunchuang.talkweb.com.cn/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://yunchuang.talkweb.com.cn/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

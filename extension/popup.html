@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>云创考勤洞察</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-icon">📊</div>
+          <div class="topbar-content">
+            <p class="eyebrow">Talkweb Attendance</p>
+            <h1>云创考勤洞察</h1>
+          </div>
+        </div>
+        <div class="topbar-center">
+          <span id="monthLabel" class="month-label">--</span>
+        </div>
+        <div class="topbar-right">
+          <button id="prevMonth" class="icon-button secondary" title="上个月" aria-label="上个月">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <button id="nextMonth" class="icon-button secondary" title="下个月" aria-label="下个月">
+            <span aria-hidden="true">›</span>
+          </button>
+          <button id="refreshBtn" class="icon-button" title="刷新当前月份" aria-label="刷新当前月份">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+      </header>
+
+      <section id="statusPanel" class="status-panel" hidden>
+        <div class="status-panel-content">
+          <strong id="statusTitle">需要登录</strong>
+          <p id="statusText">请先打开云创页面完成登录。</p>
+        </div>
+        <button id="loginBtn" class="text-button">打开云创</button>
+      </section>
+
+      <section class="stats-row" aria-label="月度统计">
+        <div class="stat-item main">
+          <span class="stat-value" id="avgHours">--</span>
+          <span class="stat-label">平均</span>
+        </div>
+        <div class="stat-item success">
+          <span class="stat-value" id="actualHours">--</span>
+          <span class="stat-label">实际</span>
+        </div>
+        <div class="stat-item warning">
+          <span class="stat-value" id="abnormalHours">--</span>
+          <span class="stat-label">异常</span>
+        </div>
+        <div class="stat-item danger">
+          <span class="stat-value" id="abnormalCount">--</span>
+          <span class="stat-label">异常天</span>
+        </div>
+        <div class="stat-item info">
+          <span class="stat-value" id="overtimeDays">--</span>
+          <span class="stat-label">加班天</span>
+        </div>
+      </section>
+
+      <div class="meta-row">
+        <span class="meta-item" id="requiredHours">应出勤 --</span>
+        <span class="meta-item" id="leaveHours">请假 --</span>
+        <span class="meta-item" id="cacheInfo">--</span>
+      </div>
+
+      <section class="calendar-section" aria-label="考勤日历">
+        <div class="weekday-row">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
