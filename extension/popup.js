@@ -18,7 +18,16 @@ const els = {
   requiredHours: document.querySelector("#requiredHours"),
   leaveHours: document.querySelector("#leaveHours"),
   calendarGrid: document.querySelector("#calendarGrid"),
-  cacheInfo: document.querySelector("#cacheInfo")
+  cacheInfo: document.querySelector("#cacheInfo"),
+  settingsBtn: document.querySelector("#settingsBtn"),
+  settingsPanel: document.querySelector("#settingsPanel"),
+  closeSettings: document.querySelector("#closeSettings"),
+  usernameInput: document.querySelector("#usernameInput"),
+  passwordInput: document.querySelector("#passwordInput"),
+  autoLoginToggle: document.querySelector("#autoLoginToggle"),
+  saveCreds: document.querySelector("#saveCreds"),
+  testLogin: document.querySelector("#testLogin"),
+  settingsHint: document.querySelector("#settingsHint")
 };
 
 const isExtension = location.protocol === "chrome-extension:"
@@ -30,7 +39,8 @@ let state = {
   yearMonth: toYearMonth(new Date()),
   records: [],
   fetchedAt: null,
-  fromCache: false
+  fromCache: false,
+  stale: false
 };
 
 init();
@@ -42,7 +52,81 @@ function init() {
   els.loginBtn.addEventListener("click", () => {
     if (isExtension) chrome.runtime.sendMessage({ type: "OPEN_LOGIN" });
   });
-  loadAttendance(false);
+  els.settingsBtn.addEventListener("click", toggleSettings);
+  els.closeSettings.addEventListener("click", () => { els.settingsPanel.hidden = true; });
+  els.saveCreds.addEventListener("click", saveCredsHandler);
+  els.testLogin.addEventListener("click", testLoginHandler);
+  loadCreds();
+  initialLoad();
+}
+
+// 自动登录设置：读/存 chrome.storage.local 的 loginCreds。
+async function loadCreds() {
+  if (!isExtension) return;
+  const stored = await chrome.storage.local.get("loginCreds");
+  const creds = stored.loginCreds || {};
+  els.usernameInput.value = creds.username || "";
+  els.passwordInput.value = creds.password || "";
+  els.autoLoginToggle.checked = Boolean(creds.autoLogin);
+}
+
+function toggleSettings() {
+  els.settingsPanel.hidden = !els.settingsPanel.hidden;
+  if (!els.settingsPanel.hidden) {
+    els.settingsHint.textContent = "";
+    els.usernameInput.focus();
+  }
+}
+
+async function saveCredsHandler() {
+  if (!isExtension) return;
+  const username = els.usernameInput.value.trim();
+  const password = els.passwordInput.value;
+  const autoLogin = els.autoLoginToggle.checked;
+  if (autoLogin && (!username || !password)) {
+    setHint("开启自动登录需先填写工号和密码。", true);
+    return;
+  }
+  await chrome.storage.local.set({ loginCreds: { username, password, autoLogin } });
+  setHint("已保存。", false);
+}
+
+async function testLoginHandler() {
+  if (!isExtension) return;
+  await saveCredsHandler();
+  if (!els.autoLoginToggle.checked) {
+    setHint("请先勾选“启用后台自动登录”。", true);
+    return;
+  }
+  setHint("正在测试登录…验证码识别可能需几秒。", false);
+  els.testLogin.disabled = true;
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "AUTO_LOGIN_NOW" });
+    if (response?.ok) {
+      setHint("登录成功，自动续期已生效。", false);
+      loadAttendance(true);
+    } else {
+      setHint(response?.error || "登录失败，请检查账号密码。", true);
+    }
+  } catch (error) {
+    setHint(error.message || "登录失败。", true);
+  } finally {
+    els.testLogin.disabled = false;
+  }
+}
+
+function setHint(text, isError) {
+  els.settingsHint.textContent = text;
+  els.settingsHint.classList.toggle("error", Boolean(isError));
+}
+
+// 打开 popup 先秒出缓存，随后自动刷新拿最新数据；
+// 刷新失败会显示明确提示，不再静默无反应。
+async function initialLoad() {
+  await loadAttendance(false);
+  if (state.fromCache) {
+    await loadAttendance(true);
+  }
 }
 
 async function loadAttendance(force) {
@@ -53,16 +137,18 @@ async function loadAttendance(force) {
     state.records = data.payload?.result?.records ?? [];
     state.fetchedAt = data.fetchedAt;
     state.fromCache = data.fromCache;
+    state.stale = false;
     render();
     hideStatus();
   } catch (error) {
     const cached = await getCachedAttendance(state.yearMonth);
+    state.stale = true;
     if (cached?.payload?.result?.records?.length > 0) {
       state.records = cached.payload.result.records;
       state.fetchedAt = cached.fetchedAt;
       state.fromCache = true;
       render();
-      hideStatus();
+      showStatus("刷新失败，展示缓存数据", error.message || API_FALLBACK_ERROR);
     } else {
       state.records = [];
       render();
@@ -111,12 +197,9 @@ function render() {
   els.requiredHours.textContent = `应出勤 ${stats.requiredHours.toFixed(1)}h`;
   els.leaveHours.textContent = `请假 ${stats.leaveHours.toFixed(1)}h`;
   els.cacheInfo.textContent = state.fetchedAt ? `${state.fromCache ? "缓存" : "已刷新"} ${formatFetchedAt(state.fetchedAt)}` : "--";
+  els.cacheInfo.classList.toggle("stale", state.stale);
 
   renderCalendar(state.records, state.yearMonth);
-
-  if (state.records.length > 0) {
-    hideStatus();
-  }
 }
 
 function calculateStats(records, yearMonth) {

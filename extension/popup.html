@@ -26,11 +26,39 @@
           <button id="nextMonth" class="icon-button secondary" title="下个月" aria-label="下个月">
             <span aria-hidden="true">›</span>
           </button>
+          <button id="settingsBtn" class="icon-button secondary" title="自动登录设置" aria-label="自动登录设置">
+            <span aria-hidden="true">⚙</span>
+          </button>
           <button id="refreshBtn" class="icon-button" title="刷新当前月份" aria-label="刷新当前月份">
             <span aria-hidden="true">↻</span>
           </button>
         </div>
       </header>
+
+      <section id="settingsPanel" class="settings-panel" hidden>
+        <div class="settings-header">
+          <strong>后台自动登录</strong>
+          <button id="closeSettings" class="text-button">收起</button>
+        </div>
+        <label class="settings-field">
+          <span>工号 / 帐户名</span>
+          <input id="usernameInput" type="text" autocomplete="username" placeholder="登录云创的工号">
+        </label>
+        <label class="settings-field">
+          <span>密码</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
+        </label>
+        <label class="settings-toggle">
+          <input id="autoLoginToggle" type="checkbox">
+          <span>启用后台自动登录（token 过期时自动续期）</span>
+        </label>
+        <p class="settings-warning">⚠️ 账号密码以明文保存在本浏览器。共用电脑请谨慎开启。</p>
+        <div class="settings-actions">
+          <button id="saveCreds" class="primary-button">保存</button>
+          <button id="testLogin" class="text-button">测试登录</button>
+          <span id="settingsHint" class="settings-hint"></span>
+        </div>
+      </section>
 
       <section id="statusPanel" class="status-panel" hidden>
         <div class="status-panel-content">

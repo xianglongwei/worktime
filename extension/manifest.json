@@ -14,15 +14,25 @@
   "permissions": [
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "alarms",
+    "offscreen",
+    "cookies"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "host_permissions": [
-    "https://yunchuang.talkweb.com.cn/*"
+    "https://yunchuang.talkweb.com.cn/*",
+    "https://yunchuangwq.talkweb.com.cn/*",
+    "https://yunchuanghq.talkweb.com.cn/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://yunchuang.talkweb.com.cn/*"
+        "https://yunchuang.talkweb.com.cn/*",
+        "https://yunchuangwq.talkweb.com.cn/*",
+        "https://yunchuanghq.talkweb.com.cn/*"
       ],
       "js": [
         "content.js"
