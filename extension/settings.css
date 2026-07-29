@@ -467,6 +467,30 @@ body {
 .changelog-list li.type-refactor::before { background: var(--purple); }
 .changelog-list li.type-security::before { background: var(--warning); }
 
+.changelog-footer {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.changelog-footer p {
+  margin: 4px 0;
+}
+
+.changelog-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.changelog-footer a:hover {
+  text-decoration: underline;
+}
+
 /* ===== Dark Mode ===== */
 @media (prefers-color-scheme: dark) {
   :root {
