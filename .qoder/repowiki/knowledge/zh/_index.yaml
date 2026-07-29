@@ -1,0 +1,26 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: master
+nodes_managed: true
+exported_at: "2026-07-20T11:39:56Z"
+modules:
+    "":
+        dir_name: 云创考勤数据抓取与诊断脚本集
+        title: 云创考勤数据抓取与诊断脚本集
+        scope:
+            - scripts/
+        source_files: []
+        children:
+            - browser_extension
+        depends_on: []
+        related_to: []
+    browser_extension:
+        dir_name: 云创考勤洞察浏览器扩展
+        title: 云创考勤洞察浏览器扩展
+        scope:
+            - extension/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>安全撤退预警</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @keyframes flash {
+    0%, 100% { background: rgba(239, 68, 68, 0.9); }
+    50% { background: rgba(249, 115, 22, 0.9); }
+  }
+  @keyframes ring {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    animation: flash 0.5s ease-in-out infinite;
+    cursor: pointer;
+    position: relative;
+  }
+  .ring {
+    position: absolute; top: 50%; left: 50%;
+    width: 200px; height: 200px;
+    border: 6px solid rgba(255,255,255,0.7);
+    border-radius: 50%;
+    animation: ring 1.5s ease-out infinite;
+    pointer-events: none;
+  }
+  .ring:nth-child(2) { animation-delay: 0.5s; }
+  .ring:nth-child(3) { animation-delay: 1s; }
+  .text {
+    font-size: 80px; font-weight: 900; color: white;
+    text-shadow: 0 0 40px rgba(0,0,0,0.5);
+    animation: bounce 0.5s ease-in-out infinite;
+    z-index: 1;
+    pointer-events: none;
+    text-align: center;
+    padding: 0 20px;
+  }
+  .sub {
+    font-size: 24px; color: rgba(255,255,255,0.85);
+    margin-top: 24px; z-index: 1;
+    pointer-events: none;
+  }
+  .close-btn {
+    position: fixed; top: 20px; right: 30px;
+    z-index: 10;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-size: 24px; font-weight: bold;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+    pointer-events: all;
+  }
+  .close-btn:hover {
+    background: rgba(255,255,255,0.35);
+  }
+</style>
+</head>
+<body>
+  <button class="close-btn" id="closeBtn" title="关闭">✕</button>
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div class="text" id="alertText">⚡ 安全撤退！</div>
+  <div class="sub">点击任意处或按 Esc 关闭</div>
+  <script>
+    // 加载自定义提示词
+    (async () => {
+      try {
+        const { retreatConfig } = await chrome.storage.local.get("retreatConfig");
+        const customText = retreatConfig?.alertText;
+        if (customText && customText.trim()) {
+          document.getElementById("alertText").textContent = customText.trim();
+        }
+      } catch (e) { /* 非扩展环境，使用默认文字 */ }
+    })();
+
+    // 关闭逻辑：三重降级确保可靠关闭
+    let closing = false;
+    async function closeAlert() {
+      if (closing) return;
+      closing = true;
+
+      // 方式1：通过 background 脚本关闭（window ID 持久化在 storage 中）
+      try {
+        const resp = await chrome.runtime.sendMessage({ type: "CLOSE_RETREAT_WINDOW" });
+        if (resp?.ok) {
+          // 双重保险：再尝试 self-close，确保窗口确实消失
+          try { window.close(); } catch (e) { /* 忽略 */ }
+          return;
+        }
+      } catch (e) { /* 继续降级 */ }
+
+      // 方式2：获取自身 tab ID 并关闭
+      try {
+        const tab = await chrome.tabs.getCurrent();
+        if (tab?.id) { await chrome.tabs.remove(tab.id); return; }
+      } catch (e) { /* 继续降级 */ }
+
+      // 方式3：最终降级
+      try { window.close(); } catch (e) { /* 无法关闭 */ }
+    }
+
+    document.getElementById("closeBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAlert();
+    });
+    document.addEventListener("click", closeAlert);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAlert(); });
+    setTimeout(closeAlert, 15000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: ""
+title: 云创考勤数据抓取与诊断脚本集
+scope:
+    - scripts/
+source_files: []
+depends_on: []
+related_to: []

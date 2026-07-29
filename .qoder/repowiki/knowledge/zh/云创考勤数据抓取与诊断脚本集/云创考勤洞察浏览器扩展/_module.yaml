@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: browser_extension
+title: 云创考勤洞察浏览器扩展
+scope:
+    - extension/
+source_files: []
+depends_on: []
+related_to: []

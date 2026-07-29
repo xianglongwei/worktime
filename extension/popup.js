@@ -19,15 +19,7 @@ const els = {
   leaveHours: document.querySelector("#leaveHours"),
   calendarGrid: document.querySelector("#calendarGrid"),
   cacheInfo: document.querySelector("#cacheInfo"),
-  settingsBtn: document.querySelector("#settingsBtn"),
-  settingsPanel: document.querySelector("#settingsPanel"),
-  closeSettings: document.querySelector("#closeSettings"),
-  usernameInput: document.querySelector("#usernameInput"),
-  passwordInput: document.querySelector("#passwordInput"),
-  autoLoginToggle: document.querySelector("#autoLoginToggle"),
-  saveCreds: document.querySelector("#saveCreds"),
-  testLogin: document.querySelector("#testLogin"),
-  settingsHint: document.querySelector("#settingsHint")
+  settingsBtn: document.querySelector("#settingsBtn")
 };
 
 const isExtension = location.protocol === "chrome-extension:"
@@ -45,79 +37,32 @@ let state = {
 
 init();
 
-function init() {
+async function init() {
+  // 初始化主题
+  const { themePreference } = await chrome.storage.local.get("themePreference");
+  if (themePreference === "dark") {
+    document.documentElement.dataset.theme = "dark";
+  } else if (themePreference === "light") {
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.colorScheme = "light";
+  } else {
+    // "system" 或 undefined -> 跟随系统
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.removeProperty("color-scheme");
+  }
+
   els.refreshBtn.addEventListener("click", () => loadAttendance(true));
   els.prevMonth.addEventListener("click", () => shiftMonth(-1));
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
   els.loginBtn.addEventListener("click", () => {
     if (isExtension) chrome.runtime.sendMessage({ type: "OPEN_LOGIN" });
   });
-  els.settingsBtn.addEventListener("click", toggleSettings);
-  els.closeSettings.addEventListener("click", () => { els.settingsPanel.hidden = true; });
-  els.saveCreds.addEventListener("click", saveCredsHandler);
-  els.testLogin.addEventListener("click", testLoginHandler);
-  loadCreds();
-  initialLoad();
-}
-
-// 自动登录设置：读/存 chrome.storage.local 的 loginCreds。
-async function loadCreds() {
-  if (!isExtension) return;
-  const stored = await chrome.storage.local.get("loginCreds");
-  const creds = stored.loginCreds || {};
-  els.usernameInput.value = creds.username || "";
-  els.passwordInput.value = creds.password || "";
-  els.autoLoginToggle.checked = Boolean(creds.autoLogin);
-}
-
-function toggleSettings() {
-  els.settingsPanel.hidden = !els.settingsPanel.hidden;
-  if (!els.settingsPanel.hidden) {
-    els.settingsHint.textContent = "";
-    els.usernameInput.focus();
-  }
-}
-
-async function saveCredsHandler() {
-  if (!isExtension) return;
-  const username = els.usernameInput.value.trim();
-  const password = els.passwordInput.value;
-  const autoLogin = els.autoLoginToggle.checked;
-  if (autoLogin && (!username || !password)) {
-    setHint("开启自动登录需先填写工号和密码。", true);
-    return;
-  }
-  await chrome.storage.local.set({ loginCreds: { username, password, autoLogin } });
-  setHint("已保存。", false);
-}
-
-async function testLoginHandler() {
-  if (!isExtension) return;
-  await saveCredsHandler();
-  if (!els.autoLoginToggle.checked) {
-    setHint("请先勾选“启用后台自动登录”。", true);
-    return;
-  }
-  setHint("正在测试登录…验证码识别可能需几秒。", false);
-  els.testLogin.disabled = true;
-  try {
-    const response = await chrome.runtime.sendMessage({ type: "AUTO_LOGIN_NOW" });
-    if (response?.ok) {
-      setHint("登录成功，自动续期已生效。", false);
-      loadAttendance(true);
-    } else {
-      setHint(response?.error || "登录失败，请检查账号密码。", true);
+  els.settingsBtn.addEventListener("click", () => {
+    if (isExtension) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("settings.html") });
     }
-  } catch (error) {
-    setHint(error.message || "登录失败。", true);
-  } finally {
-    els.testLogin.disabled = false;
-  }
-}
-
-function setHint(text, isError) {
-  els.settingsHint.textContent = text;
-  els.settingsHint.classList.toggle("error", Boolean(isError));
+  });
+  initialLoad();
 }
 
 // 打开 popup 先秒出缓存，随后自动刷新拿最新数据；
@@ -189,13 +134,13 @@ function render() {
   els.monthLabel.textContent = `${year}年${parseInt(month)}月`;
 
   const stats = calculateStats(state.records, state.yearMonth);
-  els.avgHours.textContent = stats.averageHours == null ? "--" : `${stats.averageHours.toFixed(1)}h`;
-  els.actualHours.textContent = `${stats.actualHours.toFixed(1)}h`;
-  els.abnormalHours.textContent = `${stats.abnormalHours.toFixed(1)}h`;
+  els.avgHours.textContent = stats.averageHours == null ? "--" : `${stats.averageHours.toFixed(2)}h`;
+  els.actualHours.textContent = `${stats.actualHours.toFixed(2)}h`;
+  els.abnormalHours.textContent = `${stats.abnormalHours.toFixed(2)}h`;
   els.abnormalCount.textContent = `${stats.abnormalRecords.length}`;
   els.overtimeDays.textContent = `${stats.restOvertimeRecords.length}`;
-  els.requiredHours.textContent = `应出勤 ${stats.requiredHours.toFixed(1)}h`;
-  els.leaveHours.textContent = `请假 ${stats.leaveHours.toFixed(1)}h`;
+  els.requiredHours.textContent = `应出勤 ${stats.requiredHours.toFixed(2)}h`;
+  els.leaveHours.textContent = `请假 ${stats.leaveHours.toFixed(2)}h`;
   els.cacheInfo.textContent = state.fetchedAt ? `${state.fromCache ? "缓存" : "已刷新"} ${formatFetchedAt(state.fetchedAt)}` : "--";
   els.cacheInfo.classList.toggle("stale", state.stale);
 

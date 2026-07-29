@@ -1,6 +1,7 @@
+import { CN_HOLIDAY_DATA } from "./holidays.js";
+
 const API_ORIGINS = [
   "https://yunchuang.talkweb.com.cn",
-  "https://yunchuangwq.talkweb.com.cn",
   "https://yunchuanghq.talkweb.com.cn"
 ];
 const ATTENDANCE_PATH = "/attendance/human/rzAttendanceinfo/listByMonth";
@@ -10,19 +11,153 @@ const LOGIN_API_PATH = "/auth/sys/login";
 const CACHE_PREFIX = "attendance:";
 const KEEPALIVE_ALARM = "yunchuang-keepalive";
 const KEEPALIVE_PERIOD_MINUTES = 30;
+const RETREAT_COUNTDOWN_ALARM = "retreat-countdown";
+let retreatWindowId = null; // 追踪呼吸灯窗口 ID
 // 自动登录时验证码识别可能偶尔出错，失败就换一张重试，最多这么多次
 const MAX_LOGIN_ATTEMPTS = 8;
+
+/**
+ * 判断指定日期是否为工作日
+ * 优先级：法定假日 > 调休补班日 > 周一-五常规
+ * 对于无数据年份，回退到周一-五规则
+ * @param {Date} date 
+ * @returns  isWorkday: boolean, type: "workday" | "weekend" | "holiday" | "compensatory" 
+ */
+function isWorkday(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const key = `${month}-${day}`;
+  const yearData = CN_HOLIDAY_DATA[year];
+
+  // 有数据的年份：先查假日，再查调休
+  if (yearData) {
+    if (yearData.h.includes(key)) {
+      return { isWorkday: false, type: "holiday" };
+    }
+    if (yearData.w.includes(key)) {
+      return { isWorkday: true, type: "compensatory" };
+    }
+  }
+
+  // 无数据年份或非特殊日期：按周一-五判断
+  const dayOfWeek = date.getDay(); // 0=周日, 6=周六
+  if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+    return { isWorkday: true, type: "workday" };
+  }
+  return { isWorkday: false, type: "weekend" };
+}
+
+async function calculateRetreatTarget() {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const dayInfo = isWorkday(today);
+  if (!dayInfo.isWorkday) {
+    await chrome.storage.local.remove(["retreatTarget", "retreatAlertDate"]);
+    return null;
+  }
+
+  const { retreatConfig } = await chrome.storage.local.get("retreatConfig");
+  const config = retreatConfig || { enabled: true, defaultTime: "17:30", weekdayTimes: {} };
+
+  if (!config.enabled) {
+    await chrome.storage.local.remove(["retreatTarget", "retreatAlertDate"]);
+    return null;
+  }
+
+  // 获取今天的目标时间：优先 weekdayTimes[dayOfWeek]，否则 defaultTime
+  const dayOfWeek = today.getDay(); // 0=周日, 1=周一, ..., 6=周六
+  const targetTime = (config.weekdayTimes && config.weekdayTimes[dayOfWeek]) || config.defaultTime || "17:30";
+
+  // 时间校验：如果当前时间已超过目标下班时间 + 30 分钟，不再计算
+  // 30 分钟宽限期：考虑员工可能加班或打卡延迟，超过下班时间半小时后
+  // 视为已离开，不再触发倒计时预警，避免 badge 一直显示
+  const now = new Date();
+  const [targetHH, targetMM] = targetTime.split(":").map(Number);
+  const targetMinutes = targetHH * 60 + targetMM;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  if (currentMinutes > targetMinutes + 30) {
+    await chrome.storage.local.remove(["retreatTarget", "retreatAlertDate"]);
+    return null;
+  }
+
+  // 构造目标时间戳
+  const targetDate = new Date(`${todayKey}T${targetTime}:00`);
+
+  const target = {
+    date: todayKey,
+    time: targetTime,
+    timestamp: targetDate.getTime()
+  };
+
+  await chrome.storage.local.set({ retreatTarget: target });
+  return target;
+}
+
+/**
+ * 判断员工是否已真正下班
+ * 只有当 offworkTime >= 目标下班时间时才视为已下班
+ * 避免午间外出打卡被误判为已下班
+ *
+ * 边界处理：
+ * 1. 午间外出打卡：offworkTime 为 "12:05" 等早于 targetTime 的值时，字符串比较返回 false
+ * 2. 无打卡记录/未打下班卡：records 为空或 offworkTime 缺失/为 "00:00:00" 时返回 false
+ * 3. 超过下班时间 30 分钟：retreatTarget 已被 calculateRetreatTarget 清除，
+ *    此处直接返回 false 作为安全兜底，避免倒计时窗口关闭后仍触发预警
+ */
+async function hasActuallyLeftWork(targetTime) {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const monthKey = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+  // 时间校验：如果当前时间已超过目标下班时间 + 30 分钟，直接返回 false
+  // 30 分钟宽限期：考虑员工可能加班或打卡延迟，超过下班时间半小时后
+  // 视为已离开，不再触发倒计时预警
+  const [targetHH, targetMM] = targetTime.split(":").map(Number);
+  const targetMinutes = targetHH * 60 + targetMM;
+  const currentMinutes = today.getHours() * 60 + today.getMinutes();
+  if (currentMinutes > targetMinutes + 30) return false;
+
+  const cacheKey = `attendance:${monthKey}`;
+  const cached = await chrome.storage.local.get(cacheKey);
+  const records = cached[cacheKey]?.payload?.result?.records;
+  if (!records) return false;
+
+  const todayRecord = records.find(r => r.attendanceDate === todayKey);
+  if (!todayRecord) return false;
+
+  const offworkTime = todayRecord.offworkTime;
+  if (!offworkTime || offworkTime.includes("00:00:00")) return false;
+
+  // 提取 offworkTime 的时间部分 HH:mm
+  const offworkMatch = offworkTime.match(/(\d{2}):(\d{2})/);
+  if (!offworkMatch) return false;
+  const offworkMinutes = parseInt(offworkMatch[1], 10) * 60 + parseInt(offworkMatch[2], 10);
+
+  // 只有当 offworkTime >= targetTime 时才视为已下班
+  // 注意：统一用分钟数比较，避免字符串比较在边界情况下不可靠
+  return offworkMinutes >= targetMinutes;
+}
 
 // 定时保活：静默请求一次接口，保持当月缓存新鲜。token 是固定 12 小时
 // JWT，保活不能续期；过期后由 autoLogin（存好的账号密码 + 本地验证码
 // 识别）静默自动登录。全程不开任何页面。
-chrome.runtime.onInstalled.addListener(scheduleKeepAlive);
+chrome.runtime.onInstalled.addListener(() => {
+  scheduleKeepAlive();
+  calculateRetreatTarget().then(() => updateRetreatBadge()).catch(() => {});
+});
 chrome.runtime.onStartup.addListener(() => {
   scheduleKeepAlive();
   keepAlive();
+  calculateRetreatTarget().then(() => updateRetreatBadge()).catch(() => {});
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === KEEPALIVE_ALARM) keepAlive();
+  if (alarm.name === RETREAT_COUNTDOWN_ALARM) {
+    // 每 30 秒检测：如果跨天则重算 retreatTarget，然后更新 badge
+    return checkAndRecalcRetreat().then(() => updateRetreatBadge()).catch(() => {});
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -38,6 +173,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "CLOSE_RETREAT_WINDOW") {
+    // 优先使用内存变量，降级从 storage 读取（防止 SW 休眠后变量丢失）
+    (async () => {
+      let windowId = retreatWindowId;
+      if (windowId == null) {
+        const stored = await chrome.storage.local.get("retreatWindowId");
+        windowId = stored.retreatWindowId;
+      }
+      if (windowId != null) {
+        try {
+          await chrome.windows.remove(windowId);
+        } catch (e) {
+          console.warn("[考勤插件] 关闭窗口失败：", e.message);
+        }
+      }
+      retreatWindowId = null;
+      await chrome.storage.local.remove("retreatWindowId");
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+
   if (message?.type === "OPEN_LOGIN") {
     getApiOrigin().then((origin) => chrome.tabs.create({ url: `${origin}${LOGIN_PATH}` }));
     sendResponse({ ok: true });
@@ -45,7 +202,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "AUTO_LOGIN_NOW") {
-    // 供 popup 的“测试登录”按钮调用
+    // 供 popup 的"测试登录"按钮调用
     autoLogin()
       .then((auth) => sendResponse({
         ok: Boolean(auth),
@@ -54,7 +211,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
-
+  
+  if (message?.type === "CALCULATE_RETREAT") {
+    calculateRetreatTarget().then(() => {
+      updateRetreatBadge();
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+  
+  if (message?.type === "GET_RETREAT_STATUS") {
+    getRetreatStatus().then((data) => sendResponse({ ok: true, data }));
+    return true;
+  }
+  
   return false;
 });
 
@@ -463,6 +633,7 @@ async function keepAlive() {
         lastAliveAt: fetchedAt
       });
     }
+    calculateRetreatTarget().then(() => updateRetreatBadge()).catch(() => {});
   } catch {
     // 网络不可用等，静默跳过本轮保活
   }
@@ -473,6 +644,197 @@ function scheduleKeepAlive() {
     delayInMinutes: 1,
     periodInMinutes: KEEPALIVE_PERIOD_MINUTES
   });
+  // 预警倒计时 alarm，每 30 秒唤醒 SW 更新 badge（Chrome 最小间隔）
+  chrome.alarms.create(RETREAT_COUNTDOWN_ALARM, {
+    delayInMinutes: 1,
+    periodInMinutes: 0.5
+  });
+}
+
+/**
+ * 检测是否跨天，如果 retreatTarget 日期不是今天则重算
+ */
+async function checkAndRecalcRetreat() {
+  const { retreatTarget } = await chrome.storage.local.get("retreatTarget");
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (!retreatTarget || retreatTarget.date !== todayKey) {
+    await calculateRetreatTarget();
+  }
+}
+
+/**
+ * 更新浏览器 action badge 显示倒计时
+ * 显示规则：
+ *   剩余 > 5min: "2h15m" / "45m" 蓝色
+ *   剩余 1-5min: "4:30" 橙色（秒级倒计时）
+ *   剩余 < 1min: "0:30" 红色（秒级倒计时）
+ *   剩余 <= 0 且未触发过: "GO!" 绿色，触发呼吸灯+通知
+ *   剩余 <= 0 且已触发过: "GO!" 绿色（持续显示）
+ *   剩余 < -30min: 清除 badge
+ *   非工作日/功能关闭: 清除 badge
+ */
+async function updateRetreatBadge() {
+  // 1. 检查功能是否启用
+  const { retreatConfig } = await chrome.storage.local.get("retreatConfig");
+  const config = retreatConfig || { enabled: true, defaultTime: "17:30", weekdayTimes: {} };
+
+  if (!config.enabled) {
+    chrome.action.setBadgeText({ text: "" });
+    return;
+  }
+
+  // 2. 读取今日预警目标
+  const { retreatTarget } = await chrome.storage.local.get("retreatTarget");
+  if (!retreatTarget) {
+    chrome.action.setBadgeText({ text: "" });
+    return;
+  }
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  if (retreatTarget.date !== todayKey) {
+    // 日期不是今天，重新计算
+    calculateRetreatTarget().catch(() => {});
+    chrome.action.setBadgeText({ text: "" });
+    return;
+  }
+
+  // 3. 打卡校验：只有 offworkTime >= 目标下班时间才视为已下班
+  const leftWork = await hasActuallyLeftWork(retreatTarget.time);
+  if (leftWork) {
+    chrome.action.setBadgeText({ text: "" });
+    return;
+  }
+
+  // 4. 计算剩余时间
+  const remainingMs = retreatTarget.timestamp - Date.now();
+  const remainingSec = Math.max(0, Math.round(remainingMs / 1000));
+  const remainingMin = Math.round(remainingMs / 60000);
+
+  // 5. 显示规则
+  if (remainingSec < 300 && remainingSec > 0) {
+    // 最后 5 分钟：紧凑倒计时
+    if (remainingSec < 60) {
+      // 最后 1 分钟：显示秒数
+      chrome.action.setBadgeText({ text: `${remainingSec}s` });
+      chrome.action.setBadgeBackgroundColor({ color: "#ef4444" });
+    } else {
+      // 1-5 分钟：显示分钟数
+      const min = Math.ceil(remainingSec / 60);
+      chrome.action.setBadgeText({ text: `${min}m` });
+      chrome.action.setBadgeBackgroundColor({ color: "#10b981" });
+    }
+  } else if (remainingMin > 60) {
+    const hours = Math.floor(remainingMin / 60);
+    const mins = remainingMin % 60;
+    chrome.action.setBadgeText({ text: mins > 0 ? `${hours}h${mins}m` : `${hours}h` });
+    chrome.action.setBadgeBackgroundColor({ color: "#6366f1" });
+  } else if (remainingMin >= 1) {
+    chrome.action.setBadgeText({ text: `${remainingMin}m` });
+    chrome.action.setBadgeBackgroundColor({ color: "#6366f1" });
+  } else if (remainingMin > -30) {
+    // 到点或已过但不超过30分钟
+    console.log(`[考勤插件] 到点分支：remainingMin=${remainingMin}, remainingSec=${remainingSec}`);
+    const { retreatAlertDate } = await chrome.storage.local.get("retreatAlertDate");
+    console.log(`[考勤插件] retreatAlertDate=${retreatAlertDate}, todayKey=${todayKey}`);
+    if (retreatAlertDate !== todayKey) {
+      chrome.action.setBadgeText({ text: "GO!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#10b981" });
+      await triggerRetreatAlert();
+    } else {
+      chrome.action.setBadgeText({ text: "GO!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#10b981" });
+    }
+  } else {
+    // 已过超过30分钟，清除
+    chrome.action.setBadgeText({ text: "" });
+  }
+}
+
+async function triggerRetreatAlert() {
+  console.log("[考勤插件] triggerRetreatAlert() 被调用");
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  await chrome.storage.local.set({ retreatAlertDate: todayKey });
+
+  // 1. 系统通知
+  try {
+    await chrome.notifications.create({
+      type: "basic",
+      title: "到点啦，准备撤退！",
+      message: "已达下班时间，记得打卡哦~"
+    });
+  } catch (e) {
+    console.warn("[考勤插件] 通知发送失败：", e.message);
+  }
+
+  // 2. 全屏呼吸灯 - 打开独立窗口
+  try {
+    const win = await chrome.windows.create({
+      url: chrome.runtime.getURL("retreat-alert.html"),
+      type: "popup",
+      state: "maximized",
+      focused: true
+    });
+    retreatWindowId = win?.id;
+    // 持久化到 storage，防止 SW 休眠后丢失
+    await chrome.storage.local.set({ retreatWindowId: win?.id });
+    console.log(`[考勤插件] 呼吸灯窗口已打开，windowId=${win?.id}`);
+  } catch (e) {
+    console.warn("[考勤插件] 呼吸灯窗口打开失败：", e.message);
+    // 降级方案：尝试 popup 类型不指定 state
+    try {
+      const win2 = await chrome.windows.create({
+        url: chrome.runtime.getURL("retreat-alert.html"),
+        type: "popup",
+        focused: true
+      });
+      retreatWindowId = win2?.id;
+      await chrome.storage.local.set({ retreatWindowId: win2?.id });
+      console.log("[考勤插件] 呼吸灯窗口已打开（降级模式）");
+    } catch (e2) {
+      console.warn("[考勤插件] 呼吸灯窗口降级也失败：", e2.message);
+    }
+  }
+}
+
+/**
+ * 获取当前预警状态（供设置页面显示）
+ */
+async function getRetreatStatus() {
+  const { retreatConfig, retreatTarget } = await chrome.storage.local.get([
+    "retreatConfig", "retreatTarget"
+  ]);
+
+  const config = retreatConfig || { enabled: true, defaultTime: "17:30", weekdayTimes: {} };
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  let remaining = null;
+  if (retreatTarget && retreatTarget.date === todayKey) {
+    const diffMs = retreatTarget.timestamp - Date.now();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin > 0) {
+      remaining = {
+        minutes: diffMin,
+        hours: Math.floor(diffMin / 60),
+        mins: diffMin % 60,
+        targetTime: retreatTarget.time
+      };
+    } else {
+      remaining = {
+        minutes: diffMin,
+        targetTime: retreatTarget.time
+      };
+    }
+  }
+
+  const { retreatAlertDate } = await chrome.storage.local.get("retreatAlertDate");
+  const alreadyTriggered = retreatAlertDate === todayKey;
+
+  return { config, remaining, todayKey, alreadyTriggered };
 }
 
 async function getApiOrigin() {

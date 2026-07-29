@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>设置 - 云创考勤洞察</title>
+    <link rel="stylesheet" href="settings.css">
+  </head>
+  <body>
+    <main class="settings-shell">
+      <header class="settings-topbar">
+        <div class="topbar-left">
+          <div class="topbar-icon">⚙</div>
+          <h1>云创考勤洞察 · 设置</h1>
+        </div>
+      </header>
+
+      <!-- 账号与登录 -->
+      <section class="settings-card">
+        <h2 class="card-title">📋 账号与登录</h2>
+        <label class="field">
+          <span class="field-label">工号 / 帐户名</span>
+          <input id="usernameInput" type="text" autocomplete="username" placeholder="登录云创的工号">
+        </label>
+        <label class="field">
+          <span class="field-label">密码</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
+        </label>
+        <label class="toggle-row">
+          <input id="autoLoginToggle" type="checkbox">
+          <span>启用后台自动登录（token 过期时自动续期）</span>
+        </label>
+        <p class="warning-text">⚠️ 账号密码以明文保存在本浏览器。共用电脑请谨慎开启。</p>
+        <div class="actions-row">
+          <button id="saveCreds" class="btn-primary">保存</button>
+          <button id="testLogin" class="btn-text">测试登录</button>
+          <span id="loginHint" class="hint"></span>
+        </div>
+      </section>
+
+      <!-- 安全撤退预警 -->
+      <section class="settings-card">
+        <h2 class="card-title">🚨 安全撤退预警</h2>
+        <label class="toggle-row">
+          <input id="retreatEnabled" type="checkbox">
+          <span>启用安全撤退预警（总开关）</span>
+        </label>
+        <label class="field">
+          <span class="field-label">默认下班时间</span>
+          <input id="defaultRetreatTime" type="time" value="17:30">
+        </label>
+        <div class="weekday-grid">
+          <span class="weekday-label">按星期自定义：</span>
+          <div class="weekday-row">
+            <label class="weekday-item">
+              <span>周一</span>
+              <input type="time" data-day="1" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周二</span>
+              <input type="time" data-day="2" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周三</span>
+              <input type="time" data-day="3" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周四</span>
+              <input type="time" data-day="4" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周五</span>
+              <input type="time" data-day="5" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周六</span>
+              <input type="time" data-day="6" class="weekday-time">
+            </label>
+            <label class="weekday-item">
+              <span>周日</span>
+              <input type="time" data-day="0" class="weekday-time">
+            </label>
+          </div>
+        </div>
+        <label class="field">
+          <span class="field-label">预警提示词（到点时全屏显示的文字）</span>
+          <input id="alertTextInput" type="text" placeholder="⚡ 安全撤退！" maxlength="30">
+        </label>
+        <div class="actions-row" style="margin-top: 12px;">
+          <button id="resetRetreatDefaults" class="btn-text" style="color: #f97316;">↺ 一键恢复默认</button>
+        </div>
+        <div class="retreat-status">
+          <strong>今日预警状态：</strong>
+          <span id="retreatStatusText">加载中...</span>
+        </div>
+        <p class="muted-text">节假日日历版本：2025-2026 · 非工作日自动跳过预警</p>
+      </section>
+
+      <!-- 外观 -->
+      <section class="settings-card">
+        <h2 class="card-title">🎨 外观</h2>
+        <div class="theme-selector">
+          <label class="theme-option">
+            <input type="radio" name="theme" value="system" checked>
+            <span>🖥 跟随系统</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="light">
+            <span>☀ 浅色</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="dark">
+            <span>🌙 深色</span>
+          </label>
+        </div>
+      </section>
+    </main>
+    <script src="settings.js"></script>
+  </body>
+</html>
