@@ -1,4 +1,4 @@
-// Settings page - manages login credentials, retreat config, and theme
+// Settings page - manages login credentials, retreat config, theme, and navigation
 
 const isExtension = location.protocol === "chrome-extension:"
   && typeof chrome !== "undefined"
@@ -18,12 +18,16 @@ const els = {
   retreatStatusText: document.querySelector("#retreatStatusText"),
   weekdayTimes: document.querySelectorAll(".weekday-time"),
   resetRetreatDefaults: document.querySelector("#resetRetreatDefaults"),
-  themeRadios: document.querySelectorAll('input[name="theme"]')
+  themeRadios: document.querySelectorAll('input[name="theme"]'),
+  navItems: document.querySelectorAll(".nav-item"),
+  panels: document.querySelectorAll(".panel")
 };
 
 init();
 
 async function init() {
+  // Navigation
+  initNavigation();
   // Theme initialization
   await applyTheme();
   // Load login credentials
@@ -58,6 +62,23 @@ async function init() {
 
   // Refresh retreat status every minute
   setInterval(refreshRetreatStatus, 60000);
+}
+
+// ===== Navigation =====
+
+function initNavigation() {
+  els.navItems.forEach(item => {
+    item.addEventListener("click", () => {
+      const target = item.dataset.panel;
+      // 切换导航高亮
+      els.navItems.forEach(n => n.classList.remove("active"));
+      item.classList.add("active");
+      // 切换面板
+      els.panels.forEach(p => p.classList.remove("active"));
+      const panel = document.getElementById(`panel-${target}`);
+      if (panel) panel.classList.add("active");
+    });
+  });
 }
 
 // ===== Theme =====

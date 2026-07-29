@@ -7,114 +7,161 @@
     <link rel="stylesheet" href="settings.css">
   </head>
   <body>
-    <main class="settings-shell">
-      <header class="settings-topbar">
-        <div class="topbar-left">
-          <div class="topbar-icon">⚙</div>
-          <h1>云创考勤洞察 · 设置</h1>
+    <div class="layout">
+      <!-- 侧边导航 -->
+      <nav class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon">⚙</div>
+          <span class="brand-text">考勤洞察</span>
         </div>
-      </header>
-
-      <!-- 账号与登录 -->
-      <section class="settings-card">
-        <h2 class="card-title">📋 账号与登录</h2>
-        <label class="field">
-          <span class="field-label">工号 / 帐户名</span>
-          <input id="usernameInput" type="text" autocomplete="username" placeholder="登录云创的工号">
-        </label>
-        <label class="field">
-          <span class="field-label">密码</span>
-          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
-        </label>
-        <label class="toggle-row">
-          <input id="autoLoginToggle" type="checkbox">
-          <span>启用后台自动登录（token 过期时自动续期）</span>
-        </label>
-        <p class="warning-text">⚠️ 账号密码以明文保存在本浏览器。共用电脑请谨慎开启。</p>
-        <div class="actions-row">
-          <button id="saveCreds" class="btn-primary">保存</button>
-          <button id="testLogin" class="btn-text">测试登录</button>
-          <span id="loginHint" class="hint"></span>
+        <ul class="nav-list">
+          <li class="nav-item active" data-panel="account">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">账号与登录</span>
+          </li>
+          <li class="nav-item" data-panel="retreat">
+            <span class="nav-icon">🚨</span>
+            <span class="nav-label">安全撤退预警</span>
+          </li>
+          <li class="nav-item" data-panel="appearance">
+            <span class="nav-icon">🎨</span>
+            <span class="nav-label">外观</span>
+          </li>
+          <li class="nav-item" data-panel="changelog">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">更新日志</span>
+          </li>
+        </ul>
+        <div class="sidebar-footer">
+          <span class="version-tag">v0.2.0</span>
         </div>
-      </section>
+      </nav>
 
-      <!-- 安全撤退预警 -->
-      <section class="settings-card">
-        <h2 class="card-title">🚨 安全撤退预警</h2>
-        <label class="toggle-row">
-          <input id="retreatEnabled" type="checkbox">
-          <span>启用安全撤退预警（总开关）</span>
-        </label>
-        <label class="field">
-          <span class="field-label">默认下班时间</span>
-          <input id="defaultRetreatTime" type="time" value="17:30">
-        </label>
-        <div class="weekday-grid">
-          <span class="weekday-label">按星期自定义：</span>
-          <div class="weekday-row">
-            <label class="weekday-item">
-              <span>周一</span>
-              <input type="time" data-day="1" class="weekday-time">
+      <!-- 主内容区 -->
+      <main class="main-content">
+        <!-- 账号与登录 -->
+        <section class="panel active" id="panel-account">
+          <h2 class="panel-title">📋 账号与登录</h2>
+          <div class="settings-card">
+            <label class="field">
+              <span class="field-label">工号 / 帐户名</span>
+              <input id="usernameInput" type="text" autocomplete="username" placeholder="登录云创的工号">
             </label>
-            <label class="weekday-item">
-              <span>周二</span>
-              <input type="time" data-day="2" class="weekday-time">
+            <label class="field">
+              <span class="field-label">密码</span>
+              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
             </label>
-            <label class="weekday-item">
-              <span>周三</span>
-              <input type="time" data-day="3" class="weekday-time">
+            <label class="toggle-row">
+              <input id="autoLoginToggle" type="checkbox">
+              <span>启用后台自动登录（token 过期时自动续期）</span>
             </label>
-            <label class="weekday-item">
-              <span>周四</span>
-              <input type="time" data-day="4" class="weekday-time">
-            </label>
-            <label class="weekday-item">
-              <span>周五</span>
-              <input type="time" data-day="5" class="weekday-time">
-            </label>
-            <label class="weekday-item">
-              <span>周六</span>
-              <input type="time" data-day="6" class="weekday-time">
-            </label>
-            <label class="weekday-item">
-              <span>周日</span>
-              <input type="time" data-day="0" class="weekday-time">
-            </label>
+            <p class="warning-text">⚠️ 账号密码以明文保存在本浏览器。共用电脑请谨慎开启。</p>
+            <div class="actions-row">
+              <button id="saveCreds" class="btn-primary">保存</button>
+              <button id="testLogin" class="btn-text">测试登录</button>
+              <span id="loginHint" class="hint"></span>
+            </div>
           </div>
-        </div>
-        <label class="field">
-          <span class="field-label">预警提示词（到点时全屏显示的文字）</span>
-          <input id="alertTextInput" type="text" placeholder="⚡ 安全撤退！" maxlength="30">
-        </label>
-        <div class="actions-row" style="margin-top: 12px;">
-          <button id="resetRetreatDefaults" class="btn-text" style="color: #f97316;">↺ 一键恢复默认</button>
-        </div>
-        <div class="retreat-status">
-          <strong>今日预警状态：</strong>
-          <span id="retreatStatusText">加载中...</span>
-        </div>
-        <p class="muted-text">节假日日历版本：2025-2026 · 非工作日自动跳过预警</p>
-      </section>
+        </section>
 
-      <!-- 外观 -->
-      <section class="settings-card">
-        <h2 class="card-title">🎨 外观</h2>
-        <div class="theme-selector">
-          <label class="theme-option">
-            <input type="radio" name="theme" value="system" checked>
-            <span>🖥 跟随系统</span>
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme" value="light">
-            <span>☀ 浅色</span>
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme" value="dark">
-            <span>🌙 深色</span>
-          </label>
-        </div>
-      </section>
-    </main>
+        <!-- 安全撤退预警 -->
+        <section class="panel" id="panel-retreat">
+          <h2 class="panel-title">🚨 安全撤退预警</h2>
+          <div class="settings-card">
+            <label class="toggle-row">
+              <input id="retreatEnabled" type="checkbox">
+              <span>启用安全撤退预警（总开关）</span>
+            </label>
+            <label class="field">
+              <span class="field-label">默认下班时间</span>
+              <input id="defaultRetreatTime" type="time" value="17:30">
+            </label>
+            <div class="weekday-grid">
+              <span class="weekday-label">按星期自定义：</span>
+              <div class="weekday-row">
+                <label class="weekday-item"><span>周一</span><input type="time" data-day="1" class="weekday-time"></label>
+                <label class="weekday-item"><span>周二</span><input type="time" data-day="2" class="weekday-time"></label>
+                <label class="weekday-item"><span>周三</span><input type="time" data-day="3" class="weekday-time"></label>
+                <label class="weekday-item"><span>周四</span><input type="time" data-day="4" class="weekday-time"></label>
+                <label class="weekday-item"><span>周五</span><input type="time" data-day="5" class="weekday-time"></label>
+                <label class="weekday-item"><span>周六</span><input type="time" data-day="6" class="weekday-time"></label>
+                <label class="weekday-item"><span>周日</span><input type="time" data-day="0" class="weekday-time"></label>
+              </div>
+            </div>
+            <label class="field">
+              <span class="field-label">预警提示词（到点时全屏显示的文字）</span>
+              <input id="alertTextInput" type="text" placeholder="⚡ 安全撤退！" maxlength="30">
+            </label>
+            <div class="actions-row" style="margin-top: 12px;">
+              <button id="resetRetreatDefaults" class="btn-text" style="color: #f97316;">↺ 一键恢复默认</button>
+            </div>
+            <div class="retreat-status">
+              <strong>今日预警状态：</strong>
+              <span id="retreatStatusText">加载中...</span>
+            </div>
+            <p class="muted-text">节假日日历版本：2025-2026 · 非工作日自动跳过预警</p>
+          </div>
+        </section>
+
+        <!-- 外观 -->
+        <section class="panel" id="panel-appearance">
+          <h2 class="panel-title">🎨 外观</h2>
+          <div class="settings-card">
+            <div class="theme-selector">
+              <label class="theme-option">
+                <input type="radio" name="theme" value="system" checked>
+                <span>🖥 跟随系统</span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" name="theme" value="light">
+                <span>☀ 浅色</span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" name="theme" value="dark">
+                <span>🌙 深色</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 更新日志 -->
+        <section class="panel" id="panel-changelog">
+          <h2 class="panel-title">📝 更新日志</h2>
+          <div class="changelog">
+            <article class="changelog-entry">
+              <div class="changelog-header">
+                <span class="changelog-version">v0.2.0</span>
+                <span class="changelog-date">2026-07-29</span>
+              </div>
+              <ul class="changelog-list">
+                <li class="type-feat">新增设置页面侧边导航，分区更清晰</li>
+                <li class="type-feat">新增加班/假日/调休日历角标显示</li>
+                <li class="type-feat">新增更新日志页面</li>
+                <li class="type-perf">alarm 智能调度：远离下班时间时降低唤醒频率，省电</li>
+                <li class="type-perf">content script 检测到 token 后提前停止轮询</li>
+                <li class="type-refactor">background.js 模块化拆分（auth / attendance / retreat / utils）</li>
+                <li class="type-fix">修复安全撤退预警页面因 CSP 策略无法关闭的问题</li>
+                <li class="type-fix">修复离屏文档（OCR）资源泄漏</li>
+                <li class="type-security">移除 &lt;all_urls&gt; 过度权限，仅保留云创域名</li>
+              </ul>
+            </article>
+            <article class="changelog-entry">
+              <div class="changelog-header">
+                <span class="changelog-version">v0.1.0</span>
+                <span class="changelog-date">2026-07-20</span>
+              </div>
+              <ul class="changelog-list">
+                <li class="type-feat">首次发布：考勤日历、月平均工时、欠工时统计</li>
+                <li class="type-feat">后台自动登录（本地 OCR 验证码识别）</li>
+                <li class="type-feat">安全撤退倒计时 + 全屏呼吸灯预警</li>
+                <li class="type-feat">主备域名自动降级</li>
+                <li class="type-feat">深色 / 浅色 / 跟随系统主题</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
     <script type="module" src="settings.js"></script>
   </body>
 </html>
