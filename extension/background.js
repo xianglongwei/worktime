@@ -160,6 +160,14 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// 窗口被关闭时（页面自行关闭或用户手动关闭），同步清理 retreatWindowId
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === retreatWindowId) {
+    retreatWindowId = null;
+    chrome.storage.local.remove("retreatWindowId").catch(() => {});
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "YUNCHUANG_AUTH_SNAPSHOT") {
     saveAuthSnapshot(message.auth).then(() => sendResponse({ ok: true }));

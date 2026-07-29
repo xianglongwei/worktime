@@ -77,53 +77,8 @@
   <div class="ring"></div>
   <div class="ring"></div>
   <div class="ring"></div>
-  <div class="text" id="alertText">⚡ 安全撤退！</div>
+  <div class="text" id="alertText">⚡ 下班记得打卡！</div>
   <div class="sub">点击任意处或按 Esc 关闭</div>
-  <script>
-    // 加载自定义提示词
-    (async () => {
-      try {
-        const { retreatConfig } = await chrome.storage.local.get("retreatConfig");
-        const customText = retreatConfig?.alertText;
-        if (customText && customText.trim()) {
-          document.getElementById("alertText").textContent = customText.trim();
-        }
-      } catch (e) { /* 非扩展环境，使用默认文字 */ }
-    })();
-
-    // 关闭逻辑：三重降级确保可靠关闭
-    let closing = false;
-    async function closeAlert() {
-      if (closing) return;
-      closing = true;
-
-      // 方式1：通过 background 脚本关闭（window ID 持久化在 storage 中）
-      try {
-        const resp = await chrome.runtime.sendMessage({ type: "CLOSE_RETREAT_WINDOW" });
-        if (resp?.ok) {
-          // 双重保险：再尝试 self-close，确保窗口确实消失
-          try { window.close(); } catch (e) { /* 忽略 */ }
-          return;
-        }
-      } catch (e) { /* 继续降级 */ }
-
-      // 方式2：获取自身 tab ID 并关闭
-      try {
-        const tab = await chrome.tabs.getCurrent();
-        if (tab?.id) { await chrome.tabs.remove(tab.id); return; }
-      } catch (e) { /* 继续降级 */ }
-
-      // 方式3：最终降级
-      try { window.close(); } catch (e) { /* 无法关闭 */ }
-    }
-
-    document.getElementById("closeBtn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeAlert();
-    });
-    document.addEventListener("click", closeAlert);
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAlert(); });
-    setTimeout(closeAlert, 15000);
-  </script>
+  <script src="retreat-alert.js"></script>
 </body>
 </html>
