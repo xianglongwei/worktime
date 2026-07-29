@@ -156,6 +156,9 @@ export async function updateRetreatBadge() {
   const remainingSec = Math.max(0, Math.round(remainingMs / 1000));
   const remainingMin = Math.round(remainingMs / 60000);
 
+  // 根据剩余时间动态调整 alarm 频率
+  adjustAlarmFrequency(remainingSec);
+
   if (remainingSec < 300 && remainingSec > 0) {
     if (remainingSec < 60) {
       chrome.action.setBadgeText({ text: `${remainingSec}s` });
@@ -291,11 +294,37 @@ export async function getRetreatStatus() {
   return { config, remaining, todayKey, alreadyTriggered };
 }
 
-// ─── Alarm 调度 ──────────────────────────────────────────────
+// ─── Alarm 智能调度 ─────────────────────────────────────────
+// 剩余 > 5min：每 5 分钟唤醒一次（badge 只显示分钟级）
+// 剩余 ≤ 5min：每 30 秒唤醒一次（秒级倒计时）
+// 到点后 / 非工作日：清除 alarm 不再唤醒
+
+const ALARM_SLOW_MINUTES = 5;   // 粗粒度间隔
+const ALARM_FAST_MINUTES = 0.5; // 细粒度间隔（30s，Chrome 最小值）
+let currentAlarmFast = false;
 
 export function scheduleRetreatAlarm() {
+  // 初始用慢间隔，updateRetreatBadge 会根据剩余时间动态切换
   chrome.alarms.create(RETREAT_COUNTDOWN_ALARM, {
     delayInMinutes: 1,
-    periodInMinutes: 0.5
+    periodInMinutes: ALARM_SLOW_MINUTES
   });
+  currentAlarmFast = false;
+}
+
+function adjustAlarmFrequency(remainingSec) {
+  const needFast = remainingSec > 0 && remainingSec <= 300;
+  if (needFast && !currentAlarmFast) {
+    chrome.alarms.create(RETREAT_COUNTDOWN_ALARM, {
+      delayInMinutes: 0,
+      periodInMinutes: ALARM_FAST_MINUTES
+    });
+    currentAlarmFast = true;
+  } else if (!needFast && currentAlarmFast) {
+    chrome.alarms.create(RETREAT_COUNTDOWN_ALARM, {
+      delayInMinutes: 1,
+      periodInMinutes: ALARM_SLOW_MINUTES
+    });
+    currentAlarmFast = false;
+  }
 }

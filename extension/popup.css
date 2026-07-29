@@ -502,6 +502,35 @@ html, body {
   line-height: 1.4;
 }
 
+.cal-day .day-badge {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 0 3px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.cal-day .badge-holiday {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.cal-day .badge-compensatory {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.cal-day.holiday {
+  background: #fef2f2;
+}
+
+.cal-day.compensatory {
+  border: 1px solid #f59e0b;
+}
+
 /* ===== 暗黑模式 ===== */
 @media (prefers-color-scheme: dark) {
   :root {

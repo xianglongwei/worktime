@@ -9,15 +9,20 @@ const EARLY_POLL_MS = 3000;
 const EARLY_POLL_WINDOW_MS = 60000;
 
 let lastSignature = "";
+let hasCapturedToken = false;
 
 collectAuthSnapshot();
 
 // 云创是 SPA，登录成功后 token 是异步写入 storage 的，
 // 页面加载后的一段时间内轮询，确保能抓到登录后新签发的 token。
+// 优化：一旦检测到 token 从无到有（登录成功），提前停止轮询。
 const pollStart = Date.now();
 const pollTimer = setInterval(() => {
   collectAuthSnapshot();
-  if (Date.now() - pollStart > EARLY_POLL_WINDOW_MS) clearInterval(pollTimer);
+  const elapsed = Date.now() - pollStart;
+  if (elapsed > EARLY_POLL_WINDOW_MS || (hasCapturedToken && elapsed > EARLY_POLL_MS * 3)) {
+    clearInterval(pollTimer);
+  }
 }, EARLY_POLL_MS);
 
 window.addEventListener("focus", () => collectAuthSnapshot());
@@ -64,6 +69,10 @@ function collectAuthSnapshot() {
   // token 没变化时不重复上报，避免轮询产生噪声
   const signature = JSON.stringify(auth.headers);
   if (signature !== lastSignature) {
+    // 检测到 token 从无到有，标记已捕获（用于提前结束轮询）
+    if (!hasCapturedToken && auth.headers.Authorization) {
+      hasCapturedToken = true;
+    }
     lastSignature = signature;
     chrome.runtime.sendMessage({ type: "YUNCHUANG_AUTH_SNAPSHOT", auth }).catch(() => {});
   }

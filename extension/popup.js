@@ -1,3 +1,5 @@
+import { CN_HOLIDAY_DATA } from "./holidays.js";
+
 const NORMAL_DAILY_HOURS = 8;
 const API_FALLBACK_ERROR = "获取失败。请保持云创页面打开并已登录，然后点击刷新。";
 
@@ -207,6 +209,20 @@ function renderCalendar(records, yearMonth) {
     if (key === today) classes.push("today");
     if (isWeekend) classes.push("weekend");
 
+    // 法定假日 / 调休补班角标
+    const mmdd = `${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const yearData = CN_HOLIDAY_DATA[year];
+    let dayBadge = "";
+    if (yearData) {
+      if (yearData.h.includes(mmdd)) {
+        dayBadge = "休";
+        classes.push("holiday");
+      } else if (yearData.w.includes(mmdd)) {
+        dayBadge = "班";
+        classes.push("compensatory");
+      }
+    }
+
     if (!row) {
       // no record
     } else if (isAbnormal(row)) {
@@ -226,6 +242,7 @@ function renderCalendar(records, yearMonth) {
 
     fragments.push(`
       <div class="${classes.join(" ")}" title="${escapeHtml(tileTitle(row, key))}">
+        ${dayBadge ? `<span class="day-badge ${dayBadge === "休" ? "badge-holiday" : "badge-compensatory"}">${dayBadge}</span>` : ""}
         <div class="day-header">
           <span class="day-num">${day}</span>
           ${statusText ? `<span class="day-status">${statusText}</span>` : ""}
