@@ -201,6 +201,7 @@ async function triggerRetreatAlert() {
   try {
     await chrome.notifications.create({
       type: "basic",
+      iconUrl: chrome.runtime.getURL("icon128.png"),
       title: "到点啦，准备撤退！",
       message: "已达下班时间，记得打卡哦~"
     });
