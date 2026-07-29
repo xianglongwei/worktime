@@ -9,7 +9,7 @@ Chrome MV3 插件，用于展示云创考勤日历、月平均工时、欠工时
 2. 打开右上角「开发者模式」。
 3. 点击「加载已解压的扩展程序」。
 4. 选择本目录：
-   `C:\Users\suerwei\Documents\工时记录\extension`
+   `C:\xxxxxxxxxxx\extension`
 5. 点击工具栏里的「云创考勤洞察」图标。
 
 ## 登录方式
@@ -23,7 +23,7 @@ Chrome MV3 插件，用于展示云创考勤日历、月平均工时、欠工时
    token 过期时插件会用本地 OCR 识别图形验证码，静默调用登录接口续期，
    全程无需手动操作、无需企业微信扫码。
 
-主地址不可用时自动切换备用地址 `https://yunchuangwq.talkweb.com.cn`。
+主地址不可用时自动切换备用地址 `https://yunchuanghq.talkweb.com.cn`。
 
 ### 开启后台自动登录
 

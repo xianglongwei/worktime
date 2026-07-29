@@ -3,6 +3,12 @@ import { CN_HOLIDAY_DATA } from "./holidays.js";
 const NORMAL_DAILY_HOURS = 8;
 const API_FALLBACK_ERROR = "获取失败。请保持云创页面打开并已登录，然后点击刷新。";
 
+// 休息时段（不计工时）
+const BREAK_PERIODS = [
+  { start: 12 * 60, end: 13 * 60 + 30 },  // 午休 12:00 - 13:30
+  { start: 17 * 60 + 30, end: 18 * 60 }   // 晚休 17:30 - 18:00
+];
+
 const els = {
   refreshBtn: document.querySelector("#refreshBtn"),
   prevMonth: document.querySelector("#prevMonth"),
@@ -260,14 +266,21 @@ function renderCalendar(records, yearMonth) {
 }
 
 function normalizeRecord(record) {
+  const startTime = displayTime(record.workingTime);
+  const endTime = displayTime(record.offworkTime);
+  const apiDuration = numberValue(record.duration);
+  // 只有工作日打卡时间晚于 9:00 才本地重算（扣除休息时段），其他直接用 API 值
+  const isWorkday = record.dayType_dictText === "工作日";
+  const needLocalCalc = isWorkday && startTime && endTime && timeToMinutes(startTime) > 9 * 60;
+  const duration = needLocalCalc ? calcWorkHours(startTime, endTime) : apiDuration;
   return {
     raw: record,
     date: record.attendanceDate,
-    isWorkday: record.dayType_dictText === "工作日",
+    isWorkday,
     dayType: record.dayType_dictText || "",
     status: record.status_dictText || "",
     exception: record.exception_dictText || "",
-    duration: numberValue(record.duration),
+    duration,
     workLength: numberValue(record.workLength),
     leaveHours: numberValue(record.leaveDuration),
     missHours: numberValue(record.missDuration),
@@ -276,11 +289,48 @@ function normalizeRecord(record) {
     leaveEarlyMinutes: numberValue(record.leaveEarlyTime),
     workTimeNormal: record.workTimeNormal !== false,
     offWorkTimeNormal: record.offWorkTimeNormal !== false,
-    startTime: displayTime(record.workingTime),
-    endTime: displayTime(record.offworkTime),
+    startTime,
+    endTime,
     statusIn: record.statusStr || "",
     statusOut: record.offStatusStr || ""
   };
+}
+
+/**
+ * 本地计算有效工时（小时），扣除休息时段。
+ * 规则：如果打卡时间在休息时段内，工时从休息结束后开始计算。
+ */
+function calcWorkHours(startStr, endStr) {
+  const start = timeToMinutes(startStr);
+  const end = timeToMinutes(endStr);
+  if (end <= start) return 0;
+
+  // 如果上班打卡在休息时段内，有效开始时间 = 休息结束
+  let effectiveStart = start;
+  for (const bp of BREAK_PERIODS) {
+    if (effectiveStart >= bp.start && effectiveStart < bp.end) {
+      effectiveStart = bp.end;
+    }
+  }
+  if (end <= effectiveStart) return 0;
+
+  // 计算工作区间与休息时段的重叠并扣除
+  let breakOverlap = 0;
+  for (const bp of BREAK_PERIODS) {
+    const overlapStart = Math.max(effectiveStart, bp.start);
+    const overlapEnd = Math.min(end, bp.end);
+    if (overlapEnd > overlapStart) {
+      breakOverlap += overlapEnd - overlapStart;
+    }
+  }
+
+  const workMinutes = (end - effectiveStart) - breakOverlap;
+  return Math.max(0, Math.round((workMinutes / 60) * 100) / 100);
+}
+
+function timeToMinutes(str) {
+  const [h, m] = str.split(":").map(Number);
+  return h * 60 + (m || 0);
 }
 
 function isAbnormal(row) {
