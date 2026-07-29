@@ -49,7 +49,10 @@
             </label>
             <label class="field">
               <span class="field-label">密码</span>
-              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
+              <div class="password-wrap">
+                <input id="passwordInput" type="password" autocomplete="current-password" placeholder="登录密码">
+                <button type="button" id="togglePwd" class="pwd-toggle" title="显示/隐藏密码">👁</button>
+              </div>
             </label>
             <label class="toggle-row">
               <input id="autoLoginToggle" type="checkbox">

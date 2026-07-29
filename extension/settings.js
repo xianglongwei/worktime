@@ -8,6 +8,7 @@ const isExtension = location.protocol === "chrome-extension:"
 const els = {
   usernameInput: document.querySelector("#usernameInput"),
   passwordInput: document.querySelector("#passwordInput"),
+  togglePwd: document.querySelector("#togglePwd"),
   autoLoginToggle: document.querySelector("#autoLoginToggle"),
   saveCreds: document.querySelector("#saveCreds"),
   testLogin: document.querySelector("#testLogin"),
@@ -28,6 +29,12 @@ init();
 async function init() {
   // Navigation
   initNavigation();
+  // Password visibility toggle
+  els.togglePwd.addEventListener("click", () => {
+    const isPassword = els.passwordInput.type === "password";
+    els.passwordInput.type = isPassword ? "text" : "password";
+    els.togglePwd.textContent = isPassword ? "🙈" : "👁";
+  });
   // Theme initialization
   await applyTheme();
   // Load login credentials
