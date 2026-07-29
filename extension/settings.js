@@ -85,15 +85,7 @@ function initNavigation() {
 
 async function applyTheme() {
   const { themePreference } = await chrome.storage.local.get("themePreference");
-  if (themePreference === "dark") {
-    document.documentElement.dataset.theme = "dark";
-  } else if (themePreference === "light") {
-    document.documentElement.removeAttribute("data-theme");
-    document.documentElement.style.colorScheme = "light";
-  } else {
-    document.documentElement.removeAttribute("data-theme");
-    document.documentElement.style.removeProperty("color-scheme");
-  }
+  applyThemeToDOM(themePreference);
   // Sync radio
   const value = themePreference || "system";
   const radio = document.querySelector(`input[name="theme"][value="${value}"]`);
@@ -102,12 +94,21 @@ async function applyTheme() {
 
 async function applyThemePreference(preference) {
   await chrome.storage.local.set({ themePreference: preference });
+  applyThemeToDOM(preference);
+}
+
+function applyThemeToDOM(preference) {
   if (preference === "dark") {
     document.documentElement.dataset.theme = "dark";
+    document.documentElement.style.removeProperty("color-scheme");
+  } else if (preference === "contrast") {
+    document.documentElement.dataset.theme = "contrast";
+    document.documentElement.style.colorScheme = "dark";
   } else if (preference === "light") {
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.style.colorScheme = "light";
   } else {
+    // "system" or undefined
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.style.removeProperty("color-scheme");
   }

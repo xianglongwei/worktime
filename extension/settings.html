@@ -66,7 +66,7 @@
 
         <!-- 安全撤退预警 -->
         <section class="panel" id="panel-retreat">
-          <h2 class="panel-title">🚨 安全撤退预警</h2>
+          <h2 class="panel-title">🚨 下班记得打卡！</h2>
           <div class="settings-card">
             <label class="toggle-row">
               <input id="retreatEnabled" type="checkbox">
@@ -120,7 +120,12 @@
                 <input type="radio" name="theme" value="dark">
                 <span>🌙 深色</span>
               </label>
+              <label class="theme-option">
+                <input type="radio" name="theme" value="contrast">
+                <span>◐ 高对比</span>
+              </label>
             </div>
+            <p class="muted-text" style="margin-top: 10px;">高对比模式：纯黑背景 + 加粗加大文字 + 高饱和度色彩，适合弱视用户。</p>
           </div>
         </section>
 
@@ -135,6 +140,7 @@
               </div>
               <ul class="changelog-list">
                 <li class="type-feat">新增设置页面侧边导航，分区更清晰</li>
+                <li class="type-feat">新增「高对比」主题模式，弱视用户友好</li>
                 <li class="type-feat">新增加班/假日/调休日历角标显示</li>
                 <li class="type-feat">新增更新日志页面</li>
                 <li class="type-perf">alarm 智能调度：远离下班时间时降低唤醒频率，省电</li>

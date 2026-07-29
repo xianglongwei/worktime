@@ -523,3 +523,163 @@ body {
 [data-theme="dark"] .nav-item.active {
   background: rgba(129, 140, 248, 0.14);
 }
+
+/* ===== 高对比模式（弱视友好） ===== */
+[data-theme="contrast"] {
+  --bg-gradient: #000000;
+  --card-bg: #1a1a1a;
+  --primary: #ffff00;
+  --success: #00ff88;
+  --warning: #ffaa00;
+  --danger: #ff4444;
+  --info: #44aaff;
+  --purple: #dd88ff;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-muted: #bbbbbb;
+  --border: #555555;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --sidebar-width: 220px;
+}
+
+[data-theme="contrast"] body {
+  background: #000000;
+  font-size: 14px;
+}
+
+[data-theme="contrast"] .sidebar {
+  background: #111111;
+  border-right: 2px solid #555;
+}
+
+[data-theme="contrast"] .brand-text {
+  font-weight: 900;
+  font-size: 16px;
+  color: #ffff00;
+}
+
+[data-theme="contrast"] .nav-item {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0e0e0;
+  border: 2px solid transparent;
+}
+
+[data-theme="contrast"] .nav-item:hover {
+  background: #333;
+  border-color: #666;
+}
+
+[data-theme="contrast"] .nav-item.active {
+  background: #333300;
+  border-color: #ffff00;
+  color: #ffff00;
+}
+
+[data-theme="contrast"] .panel-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+[data-theme="contrast"] .settings-card {
+  background: #1a1a1a;
+  border: 2px solid #555;
+}
+
+[data-theme="contrast"] label,
+[data-theme="contrast"] .setting-label {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+[data-theme="contrast"] input[type="text"],
+[data-theme="contrast"] input[type="password"],
+[data-theme="contrast"] input[type="time"],
+[data-theme="contrast"] select {
+  background: #222;
+  border: 2px solid #666;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+[data-theme="contrast"] input[type="text"]:focus,
+[data-theme="contrast"] input[type="password"]:focus,
+[data-theme="contrast"] input[type="time"]:focus {
+  border-color: #ffff00;
+  outline: 2px solid #ffff00;
+}
+
+[data-theme="contrast"] .btn-primary {
+  background: #ffff00;
+  color: #000000;
+  font-weight: 900;
+  border: 2px solid #ffff00;
+}
+
+[data-theme="contrast"] .btn-primary:hover {
+  background: #dddd00;
+}
+
+[data-theme="contrast"] .btn-text {
+  color: #44aaff;
+  font-weight: 700;
+  border: 2px solid #44aaff;
+}
+
+[data-theme="contrast"] .btn-text:hover {
+  background: #002244;
+}
+
+[data-theme="contrast"] .theme-option {
+  border: 2px solid #555;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+[data-theme="contrast"] .theme-option:has(input:checked) {
+  background: #333300;
+  border-color: #ffff00;
+  color: #ffff00;
+}
+
+[data-theme="contrast"] .muted-text {
+  color: #bbbbbb;
+  font-weight: 600;
+}
+
+[data-theme="contrast"] .toggle-row {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+[data-theme="contrast"] .retreat-status {
+  background: #332200;
+  border: 2px solid #ffaa00;
+  color: #ffcc00;
+  font-weight: 700;
+}
+
+[data-theme="contrast"] .changelog-entry {
+  border: 2px solid #555;
+  background: #1a1a1a;
+}
+
+[data-theme="contrast"] .changelog-version {
+  font-weight: 900;
+  color: #ffff00;
+}
+
+[data-theme="contrast"] .changelog-list li {
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+[data-theme="contrast"] .sidebar-version {
+  color: #bbbbbb;
+  font-weight: 700;
+}

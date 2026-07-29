@@ -44,6 +44,9 @@ async function init() {
   const { themePreference } = await chrome.storage.local.get("themePreference");
   if (themePreference === "dark") {
     document.documentElement.dataset.theme = "dark";
+  } else if (themePreference === "contrast") {
+    document.documentElement.dataset.theme = "contrast";
+    document.documentElement.style.colorScheme = "dark";
   } else if (themePreference === "light") {
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.style.colorScheme = "light";
