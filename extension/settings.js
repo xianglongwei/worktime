@@ -38,6 +38,7 @@ const els = {
   breakHint: document.querySelector("#breakHint"),
   shiftTypeInput: document.querySelector("#shiftTypeInput"),
   flexWindowInput: document.querySelector("#flexWindowInput"),
+  flexWindowField: document.querySelector("#flexWindowField"),
   shiftStartInput: document.querySelector("#shiftStartInput"),
   shiftEndInput: document.querySelector("#shiftEndInput")
 };
@@ -93,6 +94,8 @@ async function init() {
   await loadBreakConfig();
   els.saveBreakConfig.addEventListener("click", saveBreakConfigHandler);
   els.resetBreakConfig.addEventListener("click", resetBreakConfigHandler);
+  els.shiftTypeInput.addEventListener("change", toggleFlexWindow);
+  toggleFlexWindow();
 }
 
 // ===== Navigation =====
@@ -282,6 +285,11 @@ async function refreshRetreatStatus() {
 }
 
 // ===== 员工信息 & 班次配置 =====
+
+function toggleFlexWindow() {
+  const isFixed = els.shiftTypeInput.value === "fixed";
+  els.flexWindowField.style.display = isFixed ? "none" : "";
+}
 
 async function loadEmpInfo() {
   if (!isExtension) return;

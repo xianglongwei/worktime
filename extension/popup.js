@@ -148,7 +148,7 @@ function render() {
   els.avgHours.textContent = stats.averageHours == null ? "--" : `${stats.averageHours.toFixed(2)}h`;
   els.actualHours.textContent = `${stats.actualHours.toFixed(2)}h`;
   els.abnormalHours.textContent = `${stats.abnormalHours.toFixed(2)}h`;
-  els.abnormalCount.textContent = `${stats.abnormalRecords.length}`;
+  els.abnormalCount.textContent = `${stats.leaveDays > 0 ? (stats.leaveDays < 1 ? stats.leaveDays.toFixed(1) : stats.leaveDays) : 0}`;
   els.overtimeDays.textContent = `${stats.restOvertimeRecords.length}`;
   els.requiredHours.textContent = `应出勤 ${stats.requiredHours.toFixed(2)}h`;
   els.leaveHours.textContent = `请假 ${stats.leaveHours.toFixed(2)}h`;
@@ -174,11 +174,12 @@ function calculateStats(records, yearMonth) {
     const effectiveRequiredHours = Math.max(row.workLength - row.leaveHours, 0);
     acc.actualHours += row.duration;
     acc.requiredHours += effectiveRequiredHours;
-    acc.leaveHours += row.leaveHours;
+    acc.leaveHours += row.leaveDays * 8; // 请假小时（天数x8）
+    acc.leaveDays += row.leaveDays;
     acc.abnormalHours += row.missHours;
     acc.overtimeHours += row.overtimeHours;
     return acc;
-  }, { actualHours: 0, requiredHours: 0, leaveHours: 0, abnormalHours: 0, overtimeHours: 0 });
+  }, { actualHours: 0, requiredHours: 0, leaveHours: 0, leaveDays: 0, abnormalHours: 0, overtimeHours: 0 });
 
   const effectiveDays = totals.requiredHours / NORMAL_DAILY_HOURS;
   const averageHours = effectiveDays > 0 ? totals.actualHours / effectiveDays : null;
@@ -238,14 +239,14 @@ function renderCalendar(records, yearMonth) {
       classes.push("abnormal");
     } else if (isRestOvertime(row)) {
       classes.push("overtime");
-    } else if (row.leaveHours > 0) {
+    } else if (row.leaveDays > 0 || row.leaveHours > 0) {
       classes.push("leave");
     } else if (row.isWorkday && row.duration > 0) {
       classes.push("normal");
     }
 
     const isOvertime = row && isRestOvertime(row);
-    const hoursText = row && row.duration > 0 ? row.duration.toFixed(1) + "h" : "";
+    const hoursText = row && row.duration > 0 ? row.duration.toFixed(2) + "h" : "";
     const timeText = row && row.startTime ? `${row.startTime} 至 ${row.endTime || "--"}` : "";
     const statusText = row ? getStatusText(row) : "";
 
@@ -268,24 +269,16 @@ function renderCalendar(records, yearMonth) {
 function normalizeRecord(record) {
   const startTime = displayTime(record.workingTime);
   const endTime = displayTime(record.offworkTime);
-  const apiDuration = numberValue(record.duration);
-  // 只有工作日打卡时间晚于 9:00 才本地重算（扣除休息时段），其他直接用 API 值
+  const apiDuration = Math.round(numberValue(record.duration) * 100) / 100;
   const isWorkday = record.dayType_dictText === "工作日";
-  // 确定班次下班时间：自定义优先 > API 字段 > 默认 17:30
-  let shiftEnd;
-  let lateThreshold = 9 * 60; // 默认9点后触发本地计算
-  if (userBreakConfig?.useCustom) {
-    shiftEnd = userBreakConfig.shiftEnd || "17:30";
-    const shiftStartMin = timeToMinutes(userBreakConfig.shiftStart || "08:00");
-    if (userBreakConfig.shiftType === "flexible") {
-      lateThreshold = shiftStartMin + (userBreakConfig.flexWindow ?? 60);
-    } else {
-      lateThreshold = shiftStartMin;
-    }
-  } else {
-    shiftEnd = record.clockOffWorkTime ? record.clockOffWorkTime.slice(0, 5) : "17:30";
-  }
-  const needLocalCalc = isWorkday && startTime && endTime && timeToMinutes(startTime) > lateThreshold;
+  // 班次下班时间：自定义优先 > API 字段 > 默认 17:30
+  const shiftEnd = userBreakConfig?.useCustom
+    ? (userBreakConfig.shiftEnd || "17:30")
+    : (record.clockOffWorkTime ? record.clockOffWorkTime.slice(0, 5) : "17:30");
+  // 只有请假或异常时才本地重算，正常打卡直接用 API 值
+  const hasLeave = Boolean(record.vacationId) || numberValue(record.holidayHours) > 0;
+  const hasException = Boolean(record.exception);
+  const needLocalCalc = isWorkday && startTime && endTime && (hasLeave || hasException);
   const duration = needLocalCalc ? calcWorkHours(startTime, endTime, shiftEnd) : apiDuration;
   return {
     raw: record,
@@ -297,6 +290,7 @@ function normalizeRecord(record) {
     duration,
     workLength: numberValue(record.workLength),
     leaveHours: numberValue(record.leaveDuration),
+    leaveDays: Math.round((numberValue(record.holidayHours) / 480) * 10) / 10, // holidayHours是分钟，480min=1天
     missHours: numberValue(record.missDuration),
     overtimeHours: numberValue(record.overtimeDuration),
     lateMinutes: numberValue(record.lateTime),
@@ -387,6 +381,7 @@ function getStatusText(row) {
   if (row.exception) return "异常";
   if (row.missHours > 0) return "异常";
   if (!row.isWorkday && row.startTime) return "加班";
+  if (row.leaveDays > 0) return `请假${row.leaveDays < 1 ? row.leaveDays.toFixed(1) : row.leaveDays}天`;
   if (row.leaveHours > 0) return "请假";
   return "正常";
 }
@@ -402,6 +397,7 @@ function tileTitle(row, key) {
     `下班：${row.statusOut || row.endTime || "--"}`,
     `工时：${row.duration.toFixed(2)}h`,
     row.leaveHours ? `请假：${row.leaveHours.toFixed(2)}h` : "",
+    row.leaveDays > 0 ? `请假天数：${row.leaveDays < 1 ? row.leaveDays.toFixed(1) : row.leaveDays}天` : "",
     row.missHours ? `异常：${row.missHours.toFixed(2)}h` : ""
   ].filter(Boolean).join("\n");
 }
