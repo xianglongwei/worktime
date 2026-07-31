@@ -178,6 +178,38 @@ body {
   gap: 14px;
 }
 
+.card-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.info-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-all;
+}
+
 /* ===== Fields ===== */
 .field {
   display: flex;
@@ -249,6 +281,40 @@ body {
   accent-color: var(--primary);
 }
 
+.field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.field input,
+.field select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg, var(--card-bg));
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
 .warning-text {
   font-size: 11px;
   color: var(--warning);
@@ -275,6 +341,22 @@ body {
 
 .btn-primary:hover {
   filter: brightness(1.05);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-text {

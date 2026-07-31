@@ -3,11 +3,10 @@ import { CN_HOLIDAY_DATA } from "./holidays.js";
 const NORMAL_DAILY_HOURS = 8;
 const API_FALLBACK_ERROR = "获取失败。请保持云创页面打开并已登录，然后点击刷新。";
 
-// 休息时段（不计工时）
-const BREAK_PERIODS = [
-  { start: 12 * 60, end: 13 * 60 + 30 },  // 午休 12:00 - 13:30
-  { start: 17 * 60 + 30, end: 18 * 60 }   // 晚休 17:30 - 18:00
-];
+// 固定休息时段（默认值，可被用户自定义配置覆盖）
+const LUNCH_BREAK = { start: 12 * 60, end: 13 * 60 + 30 };  // 午休 12:00 - 13:30
+const EVENING_BREAK_MINUTES = 30; // 晚休时长：班次下班后 30 分钟
+let userBreakConfig = null; // 用户自定义休息配置
 
 const els = {
   refreshBtn: document.querySelector("#refreshBtn"),
@@ -47,7 +46,8 @@ init();
 
 async function init() {
   // 初始化主题
-  const { themePreference } = await chrome.storage.local.get("themePreference");
+  const { themePreference, breakConfig } = await chrome.storage.local.get(["themePreference", "breakConfig"]);
+  userBreakConfig = breakConfig || null;
   if (themePreference === "dark") {
     document.documentElement.dataset.theme = "dark";
   } else if (themePreference === "contrast") {
@@ -271,8 +271,22 @@ function normalizeRecord(record) {
   const apiDuration = numberValue(record.duration);
   // 只有工作日打卡时间晚于 9:00 才本地重算（扣除休息时段），其他直接用 API 值
   const isWorkday = record.dayType_dictText === "工作日";
-  const needLocalCalc = isWorkday && startTime && endTime && timeToMinutes(startTime) > 9 * 60;
-  const duration = needLocalCalc ? calcWorkHours(startTime, endTime) : apiDuration;
+  // 确定班次下班时间：自定义优先 > API 字段 > 默认 17:30
+  let shiftEnd;
+  let lateThreshold = 9 * 60; // 默认9点后触发本地计算
+  if (userBreakConfig?.useCustom) {
+    shiftEnd = userBreakConfig.shiftEnd || "17:30";
+    const shiftStartMin = timeToMinutes(userBreakConfig.shiftStart || "08:00");
+    if (userBreakConfig.shiftType === "flexible") {
+      lateThreshold = shiftStartMin + (userBreakConfig.flexWindow ?? 60);
+    } else {
+      lateThreshold = shiftStartMin;
+    }
+  } else {
+    shiftEnd = record.clockOffWorkTime ? record.clockOffWorkTime.slice(0, 5) : "17:30";
+  }
+  const needLocalCalc = isWorkday && startTime && endTime && timeToMinutes(startTime) > lateThreshold;
+  const duration = needLocalCalc ? calcWorkHours(startTime, endTime, shiftEnd) : apiDuration;
   return {
     raw: record,
     date: record.attendanceDate,
@@ -298,16 +312,36 @@ function normalizeRecord(record) {
 
 /**
  * 本地计算有效工时（小时），扣除休息时段。
+ * 午休固定 12:00-13:30，晚休 = 班次下班时间起 30 分钟。
  * 规则：如果打卡时间在休息时段内，工时从休息结束后开始计算。
  */
-function calcWorkHours(startStr, endStr) {
+function calcWorkHours(startStr, endStr, shiftEndStr) {
   const start = timeToMinutes(startStr);
   const end = timeToMinutes(endStr);
   if (end <= start) return 0;
 
+  // 构建休息时段：优先用用户自定义，否则用默认 + 班次推断
+  let breaks;
+  if (userBreakConfig?.useCustom) {
+    const lunchStart = timeToMinutes(userBreakConfig.lunchStart || "12:00");
+    const lunchEnd = timeToMinutes(userBreakConfig.lunchEnd || "13:30");
+    const eveningMin = userBreakConfig.eveningMinutes ?? 30;
+    const shiftEnd = timeToMinutes(shiftEndStr || "17:30");
+    breaks = [
+      { start: lunchStart, end: lunchEnd },
+      { start: shiftEnd, end: shiftEnd + eveningMin }
+    ];
+  } else {
+    const shiftEnd = timeToMinutes(shiftEndStr || "17:30");
+    breaks = [
+      LUNCH_BREAK,
+      { start: shiftEnd, end: shiftEnd + EVENING_BREAK_MINUTES }
+    ];
+  }
+
   // 如果上班打卡在休息时段内，有效开始时间 = 休息结束
   let effectiveStart = start;
-  for (const bp of BREAK_PERIODS) {
+  for (const bp of breaks) {
     if (effectiveStart >= bp.start && effectiveStart < bp.end) {
       effectiveStart = bp.end;
     }
@@ -316,7 +350,7 @@ function calcWorkHours(startStr, endStr) {
 
   // 计算工作区间与休息时段的重叠并扣除
   let breakOverlap = 0;
-  for (const bp of BREAK_PERIODS) {
+  for (const bp of breaks) {
     const overlapStart = Math.max(effectiveStart, bp.start);
     const overlapEnd = Math.min(end, bp.end);
     if (overlapEnd > overlapStart) {

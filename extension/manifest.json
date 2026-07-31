@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "云创考勤洞察",
   "description": "在日历上查看云创打卡时间、月平均工时、欠工时和异常日期。",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

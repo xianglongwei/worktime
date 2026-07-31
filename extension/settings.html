@@ -33,7 +33,7 @@
           </li>
         </ul>
         <div class="sidebar-footer">
-          <span class="version-tag">v0.3.0</span>
+          <span class="version-tag">v0.4.0</span>
         </div>
       </nav>
 
@@ -63,6 +63,71 @@
               <button id="saveCreds" class="btn-primary">保存</button>
               <button id="testLogin" class="btn-text">测试登录</button>
               <span id="loginHint" class="hint"></span>
+            </div>
+          </div>
+
+          <!-- 员工信息 & 班次配置 -->
+          <div class="settings-card">
+            <h3 class="card-subtitle">👤 员工信息</h3>
+            <div class="info-grid" id="empInfoGrid">
+              <div class="info-item"><span class="info-label">姓名</span><span class="info-value" id="empName">--</span></div>
+              <div class="info-item"><span class="info-label">工号</span><span class="info-value" id="empJobNum">--</span></div>
+              <div class="info-item"><span class="info-label">W3工号</span><span class="info-value" id="empW3Num">--</span></div>
+              <div class="info-item"><span class="info-label">部门</span><span class="info-value" id="empDept">--</span></div>
+              <div class="info-item"><span class="info-label">班次</span><span class="info-value" id="empShift">--</span></div>
+              <div class="info-item"><span class="info-label">考勤规则</span><span class="info-value" id="empRule">--</span></div>
+            </div>
+            <p class="muted-text">ℹ️ 打开插件弹窗刷新数据后自动显示</p>
+          </div>
+
+          <div class="settings-card">
+            <h3 class="card-subtitle">⏰ 班次与休息时间</h3>
+            <p class="muted-text" style="margin-bottom:10px">默认从 API 班次自动推断，自定义优先级更高：</p>
+            <label class="toggle-row">
+              <input id="useCustomBreak" type="checkbox">
+              <span>启用自定义配置（勾选后下方设置生效）</span>
+            </label>
+            <div class="field-row-2">
+              <label class="field">
+                <span class="field-label">班次类型</span>
+                <select id="shiftTypeInput">
+                  <option value="flexible" selected>弹性班次</option>
+                  <option value="fixed">固定班次</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">弹性窗口（分钟）</span>
+                <input id="flexWindowInput" type="number" min="0" max="180" step="10" value="60">
+              </label>
+            </div>
+            <div class="field-row-2">
+              <label class="field">
+                <span class="field-label">上班时间</span>
+                <input id="shiftStartInput" type="time" value="08:00">
+              </label>
+              <label class="field">
+                <span class="field-label">下班时间</span>
+                <input id="shiftEndInput" type="time" value="17:30">
+              </label>
+            </div>
+            <div class="field-row-2">
+              <label class="field">
+                <span class="field-label">午休开始</span>
+                <input id="lunchStartInput" type="time" value="12:00">
+              </label>
+              <label class="field">
+                <span class="field-label">午休结束</span>
+                <input id="lunchEndInput" type="time" value="13:30">
+              </label>
+            </div>
+            <label class="field">
+              <span class="field-label">晚休时长（分钟，下班后）</span>
+              <input id="eveningBreakInput" type="number" min="0" max="120" step="5" value="30">
+            </label>
+            <div class="actions-row">
+              <button id="saveBreakConfig" class="btn-primary">保存配置</button>
+              <button id="resetBreakConfig" class="btn-secondary">一键恢复默认</button>
+              <span id="breakHint" class="hint"></span>
             </div>
           </div>
         </section>
@@ -136,6 +201,20 @@
         <section class="panel" id="panel-changelog">
           <h2 class="panel-title">📝 更新日志</h2>
           <div class="changelog">
+            <article class="changelog-entry">
+              <div class="changelog-header">
+                <span class="changelog-version">v0.4.0</span>
+                <span class="changelog-date">2026-08-01</span>
+              </div>
+              <ul class="changelog-list">
+                <li class="type-feat">设置页显示员工信息与班次详情</li>
+                <li class="type-feat">支持自定义班次类型（弹性/固定）、上下班时间、弹性窗口</li>
+                <li class="type-feat">支持自定义午休/晚休时间，优先级高于系统获取</li>
+                <li class="type-feat">班次配置支持一键恢复默认</li>
+                <li class="type-feat">密码输入框新增眼睛按钮切换明文/密文</li>
+                <li class="type-feat">更新日志底部新增项目地址与下载链接</li>
+              </ul>
+            </article>
             <article class="changelog-entry">
               <div class="changelog-header">
                 <span class="changelog-version">v0.3.0</span>

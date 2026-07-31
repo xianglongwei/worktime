@@ -21,7 +21,25 @@ const els = {
   resetRetreatDefaults: document.querySelector("#resetRetreatDefaults"),
   themeRadios: document.querySelectorAll('input[name="theme"]'),
   navItems: document.querySelectorAll(".nav-item"),
-  panels: document.querySelectorAll(".panel")
+  panels: document.querySelectorAll(".panel"),
+  // 员工信息 & 班次配置
+  empName: document.querySelector("#empName"),
+  empJobNum: document.querySelector("#empJobNum"),
+  empW3Num: document.querySelector("#empW3Num"),
+  empDept: document.querySelector("#empDept"),
+  empShift: document.querySelector("#empShift"),
+  empRule: document.querySelector("#empRule"),
+  lunchStartInput: document.querySelector("#lunchStartInput"),
+  lunchEndInput: document.querySelector("#lunchEndInput"),
+  eveningBreakInput: document.querySelector("#eveningBreakInput"),
+  useCustomBreak: document.querySelector("#useCustomBreak"),
+  saveBreakConfig: document.querySelector("#saveBreakConfig"),
+  resetBreakConfig: document.querySelector("#resetBreakConfig"),
+  breakHint: document.querySelector("#breakHint"),
+  shiftTypeInput: document.querySelector("#shiftTypeInput"),
+  flexWindowInput: document.querySelector("#flexWindowInput"),
+  shiftStartInput: document.querySelector("#shiftStartInput"),
+  shiftEndInput: document.querySelector("#shiftEndInput")
 };
 
 init();
@@ -69,6 +87,12 @@ async function init() {
 
   // Refresh retreat status every minute
   setInterval(refreshRetreatStatus, 60000);
+
+  // 加载员工信息和班次配置
+  await loadEmpInfo();
+  await loadBreakConfig();
+  els.saveBreakConfig.addEventListener("click", saveBreakConfigHandler);
+  els.resetBreakConfig.addEventListener("click", resetBreakConfigHandler);
 }
 
 // ===== Navigation =====
@@ -255,4 +279,82 @@ async function refreshRetreatStatus() {
   } catch {
     els.retreatStatusText.textContent = "Unable to connect to background service.";
   }
+}
+
+// ===== 员工信息 & 班次配置 =====
+
+async function loadEmpInfo() {
+  if (!isExtension) return;
+  // 从缓存的考勤数据中提取员工信息
+  const all = await chrome.storage.local.get(null);
+  const cacheKey = Object.keys(all).find(k => k.startsWith("attendance:"));
+  if (!cacheKey) return;
+  const records = all[cacheKey]?.payload?.result?.records;
+  if (!records || records.length === 0) return;
+  const rec = records[0];
+  els.empName.textContent = rec.name || "--";
+  els.empJobNum.textContent = rec.jobNum || "--";
+  els.empW3Num.textContent = rec.w3Num || "--";
+  els.empDept.textContent = rec.deptId_dictText || rec.businessDepartName || "--";
+  els.empShift.textContent = rec.clockWorkTime && rec.clockOffWorkTime
+    ? `${rec.clockWorkTime.slice(0, 5)} - ${rec.clockOffWorkTime.slice(0, 5)}`
+    : "--";
+  els.empRule.textContent = rec.ruleName || "--";
+
+  // 如果用户未自定义，用班次信息填充默认值
+  const { breakConfig } = await chrome.storage.local.get("breakConfig");
+  if (!breakConfig?.useCustom) {
+    if (rec.clockWorkTime) els.shiftStartInput.value = rec.clockWorkTime.slice(0, 5);
+    if (rec.clockOffWorkTime) els.shiftEndInput.value = rec.clockOffWorkTime.slice(0, 5);
+  }
+}
+
+async function loadBreakConfig() {
+  if (!isExtension) return;
+  const { breakConfig } = await chrome.storage.local.get("breakConfig");
+  if (breakConfig) {
+    els.shiftTypeInput.value = breakConfig.shiftType || "flexible";
+    els.flexWindowInput.value = breakConfig.flexWindow ?? 60;
+    els.shiftStartInput.value = breakConfig.shiftStart || "08:00";
+    els.shiftEndInput.value = breakConfig.shiftEnd || "17:30";
+    els.lunchStartInput.value = breakConfig.lunchStart || "12:00";
+    els.lunchEndInput.value = breakConfig.lunchEnd || "13:30";
+    els.eveningBreakInput.value = breakConfig.eveningMinutes ?? 30;
+    els.useCustomBreak.checked = Boolean(breakConfig.useCustom);
+  }
+}
+
+async function saveBreakConfigHandler() {
+  if (!isExtension) return;
+  const breakConfig = {
+    shiftType: els.shiftTypeInput.value || "flexible",
+    flexWindow: Number(els.flexWindowInput.value) || 60,
+    shiftStart: els.shiftStartInput.value || "08:00",
+    shiftEnd: els.shiftEndInput.value || "17:30",
+    lunchStart: els.lunchStartInput.value || "12:00",
+    lunchEnd: els.lunchEndInput.value || "13:30",
+    eveningMinutes: Number(els.eveningBreakInput.value) || 30,
+    useCustom: els.useCustomBreak.checked
+  };
+  await chrome.storage.local.set({ breakConfig });
+  els.breakHint.textContent = "✅ 已保存";
+  els.breakHint.style.color = "var(--success)";
+  setTimeout(() => { els.breakHint.textContent = ""; }, 2000);
+}
+
+async function resetBreakConfigHandler() {
+  if (!isExtension) return;
+  await chrome.storage.local.remove("breakConfig");
+  // 恢复界面为未勾选状态
+  els.shiftTypeInput.value = "flexible";
+  els.flexWindowInput.value = 60;
+  els.lunchStartInput.value = "12:00";
+  els.lunchEndInput.value = "13:30";
+  els.eveningBreakInput.value = 30;
+  els.useCustomBreak.checked = false;
+  // 上下班时间从 API 缓存获取默认值
+  await loadEmpInfo();
+  els.breakHint.textContent = "✅ 已恢复为系统默认";
+  els.breakHint.style.color = "var(--success)";
+  setTimeout(() => { els.breakHint.textContent = ""; }, 2000);
 }
